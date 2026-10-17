@@ -95,6 +95,19 @@
         <h2>BEY CUSTOMIZE</h2>
         <div class="sub">部品を選ぶと、形と能力がリアルタイムで変化します。</div>
         <div class="stat-grid" id="statGrid"></div>
+        <section class="saved-builds" aria-label="保存したコマ">
+          <div class="saved-title">MY BEYS <span>このブラウザーに保存</span></div>
+          <div class="saved-controls">
+            <input id="buildName" maxlength="20" placeholder="コマの名前" aria-label="保存するコマの名前" />
+            <button class="saved-button primary" id="saveBuild">保存</button>
+          </div>
+          <div class="saved-controls">
+            <select id="savedBuildList" aria-label="保存したコマ"></select>
+            <button class="saved-button" id="loadBuild">読込</button>
+            <button class="saved-button delete" id="deleteBuild">削除</button>
+          </div>
+          <div class="saved-message" id="savedBuildMessage" aria-live="polite"></div>
+        </section>
         <div class="group">
           <div class="label">BLADE / ブレード</div>
           <div class="choices" id="blades"></div>

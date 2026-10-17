@@ -707,9 +707,45 @@
       }[a.name] || 1,
     mesh: diskShape(a.radius, 0.1, a.teeth),
   }));
-  let bladeIndex = 0,
-    driverIndex = 0,
-    armorIndex = 0,
+  const CURRENT_BUILD_KEY = "spin-clash-current-build-v1";
+  const SAVED_BUILDS_KEY = "spin-clash-saved-builds-v1";
+  function cleanBuild(value) {
+    if (!value || typeof value !== "object") return null;
+    const index = (part, length) =>
+      Number.isInteger(value[part]) && value[part] >= 0 && value[part] < length
+        ? value[part]
+        : 0;
+    return {
+      blade: index("blade", blades.length),
+      driver: index("driver", drivers.length),
+      armor: index("armor", armors.length),
+    };
+  }
+  function readStoredBuild() {
+    try {
+      return cleanBuild(JSON.parse(localStorage.getItem(CURRENT_BUILD_KEY)));
+    } catch {
+      return null;
+    }
+  }
+  function readSavedBuilds() {
+    try {
+      const value = JSON.parse(localStorage.getItem(SAVED_BUILDS_KEY));
+      if (!Array.isArray(value)) return [];
+      return value
+        .filter((item) => item && typeof item.name === "string")
+        .map((item) => ({ name: item.name.slice(0, 20), build: cleanBuild(item.build) }))
+        .filter((item) => item.build)
+        .slice(0, 30);
+    } catch {
+      return [];
+    }
+  }
+  const restoredBuild = readStoredBuild();
+  let bladeIndex = restoredBuild?.blade ?? 0,
+    driverIndex = restoredBuild?.driver ?? 0,
+    armorIndex = restoredBuild?.armor ?? 0,
+    savedBuilds = readSavedBuilds(),
     cpuBuild = { blade: 0, driver: 0, armor: 0 };
   const I = () => [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
   function mul(a, b) {
@@ -1412,7 +1448,91 @@
       .join("");
     updateBuildStats();
   }
+  const buildNameInput = document.querySelector("#buildName");
+  const savedBuildList = document.querySelector("#savedBuildList");
+  const savedBuildMessage = document.querySelector("#savedBuildMessage");
+  function rememberCurrentBuild() {
+    try {
+      localStorage.setItem(CURRENT_BUILD_KEY, JSON.stringify(currentBuild()));
+      return true;
+    } catch {
+      savedBuildMessage.textContent = "保存できません。ブラウザーの保存領域を確認してください。";
+      return false;
+    }
+  }
+  function renderSavedBuilds(selected = savedBuilds.length - 1) {
+    savedBuildList.innerHTML = savedBuilds.length
+      ? savedBuilds
+          .map(
+            (item, index) =>
+              `<option value="${index}" ${index === selected ? "selected" : ""}>${escapeHTML(item.name)}</option>`,
+          )
+          .join("")
+      : '<option value="">保存したコマはありません</option>';
+    const hasSavedBuilds = savedBuilds.length > 0;
+    document.querySelector("#loadBuild").disabled = !hasSavedBuilds;
+    document.querySelector("#deleteBuild").disabled = !hasSavedBuilds;
+  }
+  function saveBuild() {
+    const name = buildNameInput.value.trim().slice(0, 20);
+    if (!name) {
+      savedBuildMessage.textContent = "コマの名前を入力してください。";
+      buildNameInput.focus();
+      return;
+    }
+    const existingIndex = savedBuilds.findIndex(
+      (item) => item.name.toLocaleLowerCase() === name.toLocaleLowerCase(),
+    );
+    const item = { name, build: currentBuild() };
+    if (existingIndex >= 0) savedBuilds[existingIndex] = item;
+    else savedBuilds.unshift(item);
+    savedBuilds = savedBuilds.slice(0, 30);
+    try {
+      localStorage.setItem(SAVED_BUILDS_KEY, JSON.stringify(savedBuilds));
+      rememberCurrentBuild();
+      renderSavedBuilds(existingIndex >= 0 ? existingIndex : 0);
+      savedBuildMessage.textContent = `「${name}」を保存しました。次回もこのブラウザーで使えます。`;
+      buildNameInput.value = "";
+    } catch {
+      savedBuildMessage.textContent = "保存できません。ブラウザーの保存領域を確認してください。";
+    }
+  }
+  function applyBuild(build) {
+    const clean = cleanBuild(build);
+    if (!clean) return;
+    bladeIndex = clean.blade;
+    driverIndex = clean.driver;
+    armorIndex = clean.armor;
+    drawChoices();
+    rememberCurrentBuild();
+    if (netConnected && onlineSide > 0)
+      netChannel?.send({ type: "build", build: currentBuild() });
+  }
   drawChoices();
+  renderSavedBuilds(0);
+  if (restoredBuild) savedBuildMessage.textContent = "前回使ったコマを復元しました。";
+  document.querySelector("#saveBuild").onclick = saveBuild;
+  buildNameInput.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") saveBuild();
+  });
+  document.querySelector("#loadBuild").onclick = () => {
+    const item = savedBuilds[Number(savedBuildList.value)];
+    if (!item) return;
+    applyBuild(item.build);
+    savedBuildMessage.textContent = `「${item.name}」を読み込みました。`;
+  };
+  document.querySelector("#deleteBuild").onclick = () => {
+    const index = Number(savedBuildList.value);
+    if (!savedBuilds[index]) return;
+    const [removed] = savedBuilds.splice(index, 1);
+    try {
+      localStorage.setItem(SAVED_BUILDS_KEY, JSON.stringify(savedBuilds));
+      renderSavedBuilds(Math.min(index, savedBuilds.length - 1));
+      savedBuildMessage.textContent = `「${removed.name}」を削除しました。`;
+    } catch {
+      savedBuildMessage.textContent = "削除を保存できませんでした。";
+    }
+  };
   document.querySelector("#preCustomize").onclick = () =>
     document.querySelector("#custom").classList.add("open");
   document.querySelector("#customize").onclick = () => {
@@ -1424,6 +1544,7 @@
     if (b) {
       bladeIndex = +b.dataset.blade;
       drawChoices();
+      rememberCurrentBuild();
       if (netConnected && onlineSide > 0)
         netChannel?.send({ type: "build", build: currentBuild() });
     }
@@ -1431,6 +1552,7 @@
     if (b) {
       driverIndex = +b.dataset.driver;
       drawChoices();
+      rememberCurrentBuild();
       if (netConnected && onlineSide > 0)
         netChannel?.send({ type: "build", build: currentBuild() });
     }
@@ -1438,6 +1560,7 @@
     if (b) {
       armorIndex = +b.dataset.armor;
       drawChoices();
+      rememberCurrentBuild();
       if (netConnected && onlineSide > 0)
         netChannel?.send({ type: "build", build: currentBuild() });
     }

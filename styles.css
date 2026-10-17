@@ -524,6 +524,78 @@ body {
   gap: 8px;
   margin: 12px 0 18px;
 }
+.saved-builds {
+  margin: 0 0 18px;
+  padding: 12px;
+  border: 1px solid #55eaff35;
+  border-radius: 12px;
+  background: #07131dcc;
+}
+.saved-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  color: #dffaff;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 1.5px;
+}
+.saved-title span {
+  color: #83a8b5;
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+.saved-controls {
+  display: flex;
+  gap: 7px;
+  margin-top: 7px;
+}
+.saved-controls input,
+.saved-controls select {
+  min-width: 0;
+  flex: 1;
+  padding: 9px 10px;
+  border: 1px solid #ffffff2c;
+  border-radius: 8px;
+  background: #08131d;
+  color: #effcff;
+  font: inherit;
+  font-size: 11px;
+}
+.saved-controls input:focus,
+.saved-controls select:focus {
+  outline: 1px solid #5ceaff;
+}
+.saved-button {
+  flex: 0 0 auto;
+  padding: 8px 11px;
+  border: 1px solid #ffffff30;
+  border-radius: 8px;
+  background: #102430;
+  color: #d7f5fa;
+  font-size: 10px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.saved-button.primary {
+  border-color: #5ceaff70;
+  background: #0e3947;
+}
+.saved-button.delete {
+  color: #ffb5c2;
+}
+.saved-button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.saved-message {
+  min-height: 14px;
+  margin-top: 6px;
+  color: #88ddec;
+  font-size: 9px;
+}
 .stat-item {
   padding: 9px 10px;
   border: 1px solid #ffffff16;
